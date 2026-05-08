@@ -1,8 +1,12 @@
+/** Complete trip itinerary as returned by the Gemini AI layer. */
 export type Trip = {
   id: string;
   title: string;
+  /** One or more cities/regions covered by the trip. */
   destination: string[];
+  /** ISO date string, e.g. "2024-04-01". */
   startDate: string;
+  /** ISO date string, e.g. "2024-04-07". */
   endDate: string;
   travelers: number;
   vibes: Vibe[];
@@ -12,10 +16,13 @@ export type Trip = {
   logistics: Logistics;
   packingList: PackingItem[];
   collaborators: Collaborator[];
+  /** Unix timestamp (ms) set on creation. */
   createdAt: number;
+  /** Unix timestamp (ms) updated on every refinement. */
   updatedAt: number;
 };
 
+/** A single day within a trip itinerary. */
 export type Day = {
   id: string;
   dayNumber: number;
@@ -27,6 +34,7 @@ export type Day = {
   notes?: string;
 };
 
+/** A scheduled activity, meal, transport leg, or rest period within a day. */
 export type Activity = {
   id: string;
   type: "food" | "sight" | "experience" | "transport" | "lodging" | "rest";
@@ -52,8 +60,10 @@ export type CommentType = {
   timestamp: number;
 };
 
+/** Travel persona that shapes activity and dining recommendations. */
 export type Vibe = "foodie" | "adventure" | "slow" | "cultural" | "nightlife" | "family";
 
+/** Destination-specific travel information generated alongside the itinerary. */
 export type Logistics = {
   visa: string;
   currency: { code: string; rateToUSD: number };

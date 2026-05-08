@@ -125,9 +125,20 @@ const schema = {
   required: ["id", "title", "destination", "startDate", "endDate", "travelers", "vibes", "budget", "pace", "days", "logistics", "packingList"]
 };
 
+/**
+ * Refines an existing trip by applying per-day traveller feedback.
+ *
+ * Only days referenced in `feedback` are regenerated; all other days are
+ * preserved verbatim. Trip-level fields (title, logistics, packing list)
+ * are also preserved unless feedback explicitly requests a change.
+ *
+ * @param existingTrip - The current Trip to refine.
+ * @param feedback - Map of `{ dayId: userComment }`. Empty or whitespace values are ignored.
+ * @returns A new Trip object with the requested days updated.
+ */
 export async function refineTrip(
   existingTrip: Trip,
-  feedback: Record<string, string>  // { dayId: userComment }
+  feedback: Record<string, string>
 ): Promise<Trip> {
   const feedbackLines = existingTrip.days
     .filter((d) => feedback[d.id]?.trim())
@@ -175,6 +186,16 @@ Instructions:
   return tripData as Trip;
 }
 
+/**
+ * Generates a complete trip itinerary from a natural-language prompt.
+ *
+ * Calls Gemini 2.5 Flash with a strict `responseSchema` that maps 1:1 to the
+ * `Trip` TypeScript type, guaranteeing structured output without post-processing.
+ *
+ * @param prompt - Free-text trip description (e.g. "7 days in Japan, mix of Tokyo and Kyoto").
+ * @param vibes - Selected travel personas (e.g. ["foodie", "cultural"]).
+ * @returns A fully-populated Trip object ready to render.
+ */
 export async function generateTrip(prompt: string, vibes: string[]): Promise<Trip> {
   const fullPrompt = `Generate a trip based on this request: "${prompt}".\nDesired vibes: ${vibes.join(", ")}`;
   

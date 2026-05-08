@@ -1,12 +1,24 @@
 import { create } from 'zustand';
 import { Trip, Activity } from '../types';
 
+/** Global application state — holds the active trip and all mutation actions. */
 interface AppState {
+  /** The currently loaded trip, or null if no trip has been generated yet. */
   currentTrip: Trip | null;
+
+  /** Replace the entire current trip (used after generate or refine). */
   setCurrentTrip: (trip: Trip) => void;
+
+  /** Update the start time of a single activity within a day. */
   updateActivityTime: (dayId: string, activityId: string, newStartTime: string) => void;
+
+  /** Reorder activities within a day using drag-and-drop IDs. */
   reorderActivities: (dayId: string, activeId: string, overId: string) => void;
+
+  /** Swap one activity for another (used by the AI alternatives panel). */
   replaceActivity: (dayId: string, oldActivityId: string, newActivity: Activity) => void;
+
+  /** Update the trip's total budget amount. */
   setBudget: (amount: number) => void;
 }
 
