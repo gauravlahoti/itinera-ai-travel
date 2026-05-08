@@ -84,7 +84,7 @@ export default function Home() {
         {isGenerating && <GeneratingOverlay mode="generate" prompt={prompt} />}
       </AnimatePresence>
 
-      <main className="min-h-screen relative flex items-center justify-center overflow-hidden font-sans bg-black">
+      <main className="min-h-screen relative flex items-center justify-center overflow-hidden font-sans bg-black" role="main">
         <motion.div
           className="absolute inset-0 bg-cover bg-center bg-no-repeat"
           style={{ backgroundImage: 'url("/hero-bg.png")' }}
@@ -130,6 +130,7 @@ export default function Home() {
             >
               <form
                 onSubmit={handlePlanTrip}
+                aria-label="Trip planning form"
                 className="bg-white/8 backdrop-blur-2xl p-2 rounded-2xl border border-white/15 shadow-2xl flex flex-col md:flex-row gap-2 hover:border-white/25 transition-colors duration-500 focus-within:border-white/30"
               >
                 <div className="flex-1 relative">
@@ -155,7 +156,7 @@ export default function Home() {
                 </Button>
               </form>
 
-              <div className="flex flex-wrap justify-center gap-2">
+              <div className="flex flex-wrap justify-center gap-2" role="group" aria-label="Select travel vibes">
                 {VIBES.map((vibe) => (
                   <motion.button
                     key={vibe.id}
@@ -163,13 +164,14 @@ export default function Home() {
                     whileTap={{ scale: 0.96 }}
                     onClick={() => toggleVibe(vibe.id)}
                     disabled={isGenerating}
+                    aria-pressed={selectedVibes.includes(vibe.id)}
                     className={`px-5 py-2 rounded-full border transition-all duration-300 text-sm font-medium flex items-center gap-2
                       ${selectedVibes.includes(vibe.id)
                         ? "bg-white text-black border-white shadow-lg shadow-white/10"
                         : "bg-white/5 border-white/10 text-white/60 hover:bg-white/10 hover:border-white/20 hover:text-white"
                       }`}
                   >
-                    <span>{vibe.icon}</span>
+                    <span aria-hidden="true">{vibe.icon}</span>
                     {vibe.label}
                   </motion.button>
                 ))}

@@ -21,8 +21,14 @@ const jetbrainsMono = JetBrains_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "Itinera — Travel Planning & Experience Engine",
-  description: "Plan trips dynamically with preferences, constraints and real time updates.",
+  title: "Itinera — AI Travel Planner",
+  description: "Describe your ideal trip in plain language. Itinera generates a bespoke day-by-day itinerary with activities, dining, logistics, and an interactive map — powered by Gemini 2.5 Flash.",
+  keywords: ["travel planner", "AI itinerary", "trip generator", "Gemini AI"],
+  openGraph: {
+    title: "Itinera — AI Travel Planner",
+    description: "Bespoke journeys crafted by AI. Describe your trip and get a full itinerary in seconds.",
+    type: "website",
+  },
 };
 
 export default function RootLayout({

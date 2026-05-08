@@ -226,10 +226,13 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
         </header>
 
         {/* Tab Nav */}
-        <div className="flex-shrink-0 border-b px-5 flex gap-1 bg-background">
+        <div className="flex-shrink-0 border-b px-5 flex gap-1 bg-background" role="tablist" aria-label="Trip sections">
           {(["timeline", "budget", "logistics"] as const).map((tab) => (
             <button
               key={tab}
+              role="tab"
+              aria-selected={activeTab === tab}
+              aria-controls={`panel-${tab}`}
               onClick={() => setActiveTab(tab)}
               className={`py-2.5 px-4 text-xs font-medium capitalize transition-all border-b-2 -mb-px ${
                 activeTab === tab
@@ -243,7 +246,7 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
         </div>
 
         {/* Main Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar">
+        <div className="flex-1 overflow-y-auto custom-scrollbar" role="main" aria-live="polite">
           <AnimatePresence mode="wait">
             {/* ── TIMELINE TAB ── */}
             {activeTab === "timeline" && (
@@ -342,6 +345,7 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
                         onChange={(e) => setDayFeedback((prev) => ({ ...prev, [day.id]: e.target.value }))}
                         placeholder={`e.g. "Replace the museum with something outdoors" or "I prefer budget-friendly options"`}
                         rows={2}
+                        aria-label={`Feedback for Day ${day.dayNumber} in ${day.city}`}
                         className="w-full px-4 py-3 text-sm bg-secondary/20 border border-secondary/30 rounded-xl resize-none outline-none focus:border-primary/40 placeholder:text-muted-foreground/40 transition-colors"
                       />
                     </div>
