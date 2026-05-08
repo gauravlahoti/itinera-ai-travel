@@ -248,7 +248,7 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
         </div>
 
         {/* Main Scrollable Content */}
-        <div className="flex-1 overflow-y-auto custom-scrollbar" role="main" aria-live="polite">
+        <div className="flex-1 overflow-y-auto custom-scrollbar">
           <AnimatePresence mode="wait">
             {/* ── TIMELINE TAB ── */}
             {activeTab === "timeline" && (
