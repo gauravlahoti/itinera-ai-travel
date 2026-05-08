@@ -41,7 +41,17 @@ export default function RootLayout({
       lang="en"
       className={cn("h-full", "antialiased", inter.variable, fraunces.variable, jetbrainsMono.variable, "font-sans", geist.variable)}
     >
-      <body className="min-h-full flex flex-col">{children}</body>
+      <body className="min-h-full flex flex-col">
+        <a
+          href="#main-content"
+          className="sr-only focus:not-sr-only focus:absolute focus:top-2 focus:left-2 focus:z-50 focus:px-4 focus:py-2 focus:bg-primary focus:text-primary-foreground focus:rounded-lg focus:text-sm"
+        >
+          Skip to main content
+        </a>
+        <div id="main-content" className="flex flex-col flex-1">
+          {children}
+        </div>
+      </body>
     </html>
   );
 }

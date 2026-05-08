@@ -33,6 +33,7 @@ import {
   ChevronLeft, Map as MapIcon, List, Wand2, MessageSquarePlus
 } from "lucide-react";
 import { Activity } from "@/types";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 
 export default function TripPage({ params }: { params: Promise<{ id: string }> }) {
   const router = useRouter();
@@ -177,6 +178,7 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
         {isRefining && <GeneratingOverlay mode="refine" feedbackSummary={feedbackSummary} />}
       </AnimatePresence>
 
+    <ErrorBoundary>
     <div className="flex h-screen w-full overflow-hidden bg-background relative">
       {/* Activity Detail Side Panel */}
       <ActivityDetailPanel
@@ -518,6 +520,7 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
         />
       </div>
     </div>
+    </ErrorBoundary>
     </>
   );
 }
