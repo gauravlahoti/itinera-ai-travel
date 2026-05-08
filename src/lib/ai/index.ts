@@ -2,9 +2,10 @@ import { GoogleGenAI } from "@google/genai";
 import { Trip } from "@/types";
 
 const ai = new GoogleGenAI({ 
+  apiKey: process.env.GOOGLE_API_KEY,
   vertexai: true, 
-  project: "gcp-experiments-490306", 
-  location: "us-central1" 
+  project: process.env.GOOGLE_CLOUD_PROJECT || "gcp-experiments-490306", 
+  location: process.env.GOOGLE_CLOUD_LOCATION || "us-central1" 
 });
 
 const systemInstruction = `
@@ -140,8 +141,9 @@ export async function generateTrip(prompt: string, vibes: string[]): Promise<Tri
     throw new Error("Failed to generate trip content");
   }
 
-  // Parse the JSON. The model is instructed to return JSON matching the schema.
-  const tripData = JSON.parse(response.text);
+  // Clean response text in case the model included markdown code blocks
+  const cleanJson = response.text.replace(/^```json\n?/, '').replace(/\n?```$/, '').trim();
+  const tripData = JSON.parse(cleanJson);
   
   // Initialize some client-only fields
   tripData.collaborators = [];
