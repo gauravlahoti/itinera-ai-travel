@@ -221,7 +221,7 @@ export async function exportTripToPDF(trip: Trip): Promise<void> {
   }
 
   // ── Footer ────────────────────────────────────────────
-  const totalPages = (doc.internal as { getNumberOfPages: () => number }).getNumberOfPages();
+  const totalPages = doc.getNumberOfPages();
   for (let p = 1; p <= totalPages; p++) {
     doc.setPage(p);
     doc.setFontSize(7);

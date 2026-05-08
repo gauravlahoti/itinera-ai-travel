@@ -1,12 +1,13 @@
 import { GoogleGenAI } from "@google/genai";
 import { Trip } from "@/types";
 
-const ai = new GoogleGenAI({ 
-  apiKey: process.env.GOOGLE_API_KEY,
-  vertexai: true, 
-  project: process.env.GOOGLE_CLOUD_PROJECT || "gcp-experiments-490306", 
-  location: process.env.GOOGLE_CLOUD_LOCATION || "us-central1" 
-});
+const ai = process.env.GOOGLE_API_KEY 
+  ? new GoogleGenAI({ apiKey: process.env.GOOGLE_API_KEY })
+  : new GoogleGenAI({ 
+      vertexai: true, 
+      project: process.env.GOOGLE_CLOUD_PROJECT || "gcp-experiments-490306", 
+      location: process.env.GOOGLE_CLOUD_LOCATION || "us-central1" 
+    });
 
 const systemInstruction = `
 You are an expert, opinionated travel planner.
@@ -124,18 +125,74 @@ const schema = {
   required: ["id", "title", "destination", "startDate", "endDate", "travelers", "vibes", "budget", "pace", "days", "logistics", "packingList"]
 };
 
+export async function refineTrip(
+  existingTrip: Trip,
+  feedback: Record<string, string>  // { dayId: userComment }
+): Promise<Trip> {
+  const feedbackLines = existingTrip.days
+    .filter((d) => feedback[d.id]?.trim())
+    .map((d) => `  • Day ${d.dayNumber} – ${d.city}: "${feedback[d.id].trim()}"`)
+    .join("\n");
+
+  const fullPrompt = `You are refining an existing trip plan based on specific traveller feedback.
+
+EXISTING TRIP (JSON):
+${JSON.stringify(existingTrip)}
+
+TRAVELLER FEEDBACK (per day):
+${feedbackLines}
+
+Instructions:
+- Apply each piece of feedback to the relevant day only.
+- Keep all days that have NO feedback exactly as they are.
+- Preserve the trip's overall structure, title, dates, logistics, and packing list unless feedback explicitly requests a change.
+- Return the complete updated Trip as a single JSON object matching the original schema.`;
+
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: fullPrompt,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: schema as unknown as import("@google/genai").Schema,
+      },
+    });
+  } catch (error) {
+    console.error("AI Refine Error:", JSON.stringify(error, null, 2));
+    throw error;
+  }
+
+  if (!response.text) throw new Error("Failed to refine trip content");
+
+  const cleanJson = response.text.replace(/^```json\n?/, "").replace(/\n?```$/, "").trim();
+  const tripData = JSON.parse(cleanJson);
+  tripData.collaborators = existingTrip.collaborators ?? [];
+  tripData.createdAt = existingTrip.createdAt;
+  tripData.updatedAt = Date.now();
+
+  return tripData as Trip;
+}
+
 export async function generateTrip(prompt: string, vibes: string[]): Promise<Trip> {
   const fullPrompt = `Generate a trip based on this request: "${prompt}".\nDesired vibes: ${vibes.join(", ")}`;
   
-  const response = await ai.models.generateContent({
-    model: "gemini-3-flash-preview",
-    contents: fullPrompt,
-    config: {
-      systemInstruction,
-      responseMimeType: "application/json",
-      responseSchema: schema as unknown as import("@google/genai").Schema,
-    }
-  });
+  let response;
+  try {
+    response = await ai.models.generateContent({
+      model: "gemini-2.5-flash",
+      contents: fullPrompt,
+      config: {
+        systemInstruction,
+        responseMimeType: "application/json",
+        responseSchema: schema as unknown as import("@google/genai").Schema,
+      }
+    });
+  } catch (error) {
+    console.error("AI Generation Error Details:", JSON.stringify(error, null, 2));
+    throw error;
+  }
 
   if (!response.text) {
     throw new Error("Failed to generate trip content");

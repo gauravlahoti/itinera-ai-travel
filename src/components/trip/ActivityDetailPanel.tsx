@@ -1,6 +1,7 @@
 "use client";
 
 import { Activity } from "@/types";
+import { useAppStore } from "@/store";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   X, Clock, MapPin, DollarSign, ExternalLink, RefreshCw,

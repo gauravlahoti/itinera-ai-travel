@@ -12,9 +12,10 @@ export async function POST(request: Request) {
     const tripData = await generateTrip(prompt, vibes || []);
     return NextResponse.json(tripData);
   } catch (error) {
-    console.error('Error generating trip:', error);
+    const message = error instanceof Error ? error.message : String(error);
+    console.error('Error generating trip:', message);
     return NextResponse.json(
-      { error: 'Failed to generate trip' },
+      { error: message },
       { status: 500 }
     );
   }

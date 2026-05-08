@@ -3,10 +3,8 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args:
       - 'build'
-      - '--build-arg'
-      - 'NEXT_PUBLIC_GOOGLE_MAPS_API_KEY=${_NEXT_PUBLIC_GOOGLE_MAPS_API_KEY}'
       - '-t'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app:$BUILD_ID'
       - '-t'
       - 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app:latest'
       - '.'
@@ -15,7 +13,7 @@ steps:
   - name: 'gcr.io/cloud-builders/docker'
     args: ['push', 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app', '--all-tags']
 
-  # Deploy container image to Cloud Run
+  # Deploy container image to Cloud Run with the Gemini API key from Secret Manager
   - name: 'gcr.io/google.com/cloudsdktool/cloud-sdk'
     entrypoint: gcloud
     args:
@@ -23,7 +21,7 @@ steps:
       - 'deploy'
       - 'itinera'
       - '--image'
-      - 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app:$COMMIT_SHA'
+      - 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app:$BUILD_ID'
       - '--region'
       - 'us-central1'
       - '--allow-unauthenticated'
@@ -32,8 +30,8 @@ steps:
       - '--min-instances=0'
       - '--max-instances=10'
       - '--timeout=300'
-      - '--service-account=default'
+      - '--set-secrets=GOOGLE_API_KEY=google-ai-api-key:latest'
 
 images:
-  - 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app:$COMMIT_SHA'
+  - 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app:$BUILD_ID'
   - 'us-central1-docker.pkg.dev/$PROJECT_ID/itinera/app:latest'

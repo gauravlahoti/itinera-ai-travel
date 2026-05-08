@@ -3,7 +3,7 @@
 import { useEffect, useState, use, useMemo } from "react";
 import { useAppStore } from "@/store";
 import { useRouter } from "next/navigation";
-import { Map, AdvancedMarker, Pin, APIProvider } from '@vis.gl/react-google-maps';
+import dynamic from "next/dynamic";
 import {
   DndContext,
   closestCenter,
@@ -19,13 +19,18 @@ import {
   verticalListSortingStrategy,
 } from '@dnd-kit/sortable';
 import { SortableActivity } from "@/components/trip/SortableActivity";
-import { MapPolyline } from "@/components/trip/MapPolyline";
 import { ActivityDetailPanel } from "@/components/trip/ActivityDetailPanel";
+
+const TripMap = dynamic(
+  () => import("@/components/trip/TripMap").then((m) => m.TripMap),
+  { ssr: false, loading: () => <div className="w-full h-full bg-muted animate-pulse" /> }
+);
 import { BudgetBar } from "@/components/trip/BudgetBar";
+import { GeneratingOverlay } from "@/components/GeneratingOverlay";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Calendar, Wind, Info, Briefcase, Download,
-  ChevronLeft, Map as MapIcon, List
+  ChevronLeft, Map as MapIcon, List, Wand2, MessageSquarePlus
 } from "lucide-react";
 import { Activity } from "@/types";
 
@@ -41,6 +46,37 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
   const [activeTab, setActiveTab] = useState<"timeline" | "budget" | "logistics">("timeline");
   const [showMap, setShowMap] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
+  const [dayFeedback, setDayFeedback] = useState<Record<string, string>>({});
+  const [isRefining, setIsRefining] = useState(false);
+
+  const setCurrentTrip = useAppStore((state) => state.setCurrentTrip);
+
+  const activeFeedbackCount = Object.values(dayFeedback).filter((v) => v.trim()).length;
+
+  const handleRefineTrip = async () => {
+    if (!currentTrip || activeFeedbackCount === 0) return;
+    setIsRefining(true);
+    try {
+      const response = await fetch("/api/refine-trip", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ trip: currentTrip, feedback: dayFeedback }),
+      });
+      if (!response.ok) {
+        const body = await response.json().catch(() => ({}));
+        throw new Error(body.error || "Failed to refine trip");
+      }
+      const refined = await response.json();
+      setCurrentTrip(refined);
+      setDayFeedback({});
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : "Something went wrong.";
+      console.error("Refine failed:", msg);
+      alert(msg);
+    } finally {
+      setIsRefining(false);
+    }
+  };
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -61,19 +97,35 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
     }
   };
 
-  const allLocations = useMemo(() => {
+  const mapLocations = useMemo(() => {
     if (!currentTrip) return [];
-    return currentTrip.days.flatMap(d =>
-      d.activities.map(a => ({ ...a.location, id: a.id, name: a.name }))
+    return currentTrip.days.flatMap((d, dayIndex) =>
+      d.activities.map(a => ({
+        id: a.id,
+        name: a.name,
+        lat: a.location.lat,
+        lng: a.location.lng,
+        dayIndex,
+        activity: a,
+      }))
     );
   }, [currentTrip]);
 
+  const dayPaths = useMemo(() => {
+    if (!currentTrip) return [];
+    const DAY_COLORS = ["#7C9E87", "#C9622B", "#C8A84B", "#6B90A8", "#8B6B9E", "#708090"];
+    return currentTrip.days.map((d, i) => ({
+      positions: d.activities.map(a => [a.location.lat, a.location.lng] as [number, number]),
+      color: DAY_COLORS[i % DAY_COLORS.length],
+    }));
+  }, [currentTrip]);
+
   const center = useMemo(() => {
-    if (allLocations.length > 0) {
-      return { lat: allLocations[0].lat, lng: allLocations[0].lng };
+    if (mapLocations.length > 0) {
+      return { lat: mapLocations[0].lat, lng: mapLocations[0].lng };
     }
     return { lat: 35.6762, lng: 139.6503 };
-  }, [allLocations]);
+  }, [mapLocations]);
 
   const handleExportPDF = async () => {
     if (!currentTrip) return;
@@ -115,7 +167,16 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
     );
   }
 
+  const feedbackSummary = activeFeedbackCount === 1
+    ? `Feedback on ${currentTrip.days.find(d => dayFeedback[d.id]?.trim())?.city ?? "1 day"}`
+    : `Feedback on ${activeFeedbackCount} days`;
+
   return (
+    <>
+      <AnimatePresence>
+        {isRefining && <GeneratingOverlay mode="refine" feedbackSummary={feedbackSummary} />}
+      </AnimatePresence>
+
     <div className="flex h-screen w-full overflow-hidden bg-background relative">
       {/* Activity Detail Side Panel */}
       <ActivityDetailPanel
@@ -269,6 +330,21 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
                         💡 {day.notes}
                       </div>
                     )}
+
+                    {/* Per-day feedback */}
+                    <div className="mt-4 px-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <MessageSquarePlus size={13} className="text-muted-foreground" />
+                        <span className="text-xs text-muted-foreground uppercase tracking-wider">Feedback for Day {day.dayNumber}</span>
+                      </div>
+                      <textarea
+                        value={dayFeedback[day.id] || ""}
+                        onChange={(e) => setDayFeedback((prev) => ({ ...prev, [day.id]: e.target.value }))}
+                        placeholder={`e.g. "Replace the museum with something outdoors" or "I prefer budget-friendly options"`}
+                        rows={2}
+                        className="w-full px-4 py-3 text-sm bg-secondary/20 border border-secondary/30 rounded-xl resize-none outline-none focus:border-primary/40 placeholder:text-muted-foreground/40 transition-colors"
+                      />
+                    </div>
                   </section>
                 ))}
               </motion.div>
@@ -381,6 +457,33 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
           </AnimatePresence>
         </div>
 
+        {/* Refine Bar — in-flow so it never overlaps the textarea */}
+        <AnimatePresence>
+          {activeFeedbackCount > 0 && (
+            <motion.div
+              initial={{ opacity: 0, y: 16 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: 16 }}
+              transition={{ type: "spring", stiffness: 300, damping: 30 }}
+              className="flex-shrink-0 px-4 py-2 border-t bg-background/95 backdrop-blur-sm"
+            >
+              <div className="bg-primary text-primary-foreground rounded-2xl px-5 py-3.5 flex items-center justify-between shadow-xl">
+                <p className="text-sm font-medium">
+                  {activeFeedbackCount} day{activeFeedbackCount > 1 ? "s" : ""} with feedback
+                </p>
+                <button
+                  onClick={handleRefineTrip}
+                  disabled={isRefining}
+                  className="flex items-center gap-2 bg-white text-primary px-4 py-2 rounded-xl text-sm font-semibold hover:bg-white/90 transition-colors disabled:opacity-60"
+                >
+                  <Wand2 size={14} />
+                  Regenerate with AI
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+
         {/* Floating Day Nav */}
         <div className="absolute bottom-6 left-1/2 -translate-x-1/2 lg:left-1/4 z-30 flex gap-1.5 bg-background/85 backdrop-blur-md px-3 py-2 rounded-full border shadow-xl overflow-x-auto max-w-[calc(50vw-2rem)] scrollbar-hide">
           {currentTrip.days.map((day) => (
@@ -402,53 +505,15 @@ export default function TripPage({ params }: { params: Promise<{ id: string }> }
 
       {/* ── Right Pane: Map ─────────────────────────────── */}
       <div className={`${showMap ? "flex" : "hidden"} lg:flex lg:w-1/2 h-full bg-muted relative flex-col`}>
-        <APIProvider apiKey={process.env.NEXT_PUBLIC_GOOGLE_MAPS_API_KEY || ''}>
-          <Map
-            defaultZoom={12}
-            defaultCenter={center}
-            mapId="itinera-map-id"
-            disableDefaultUI={true}
-            style={{ width: '100%', height: '100%' }}
-          >
-            {allLocations.map((loc) => (
-              <AdvancedMarker
-                key={loc.id}
-                position={{ lat: loc.lat, lng: loc.lng }}
-                zIndex={hoveredActivityId === loc.id ? 100 : 1}
-                onClick={() => {
-                  const activity = currentTrip.days
-                    .flatMap(d => d.activities)
-                    .find(a => a.id === loc.id);
-                  if (activity) setSelectedActivity(activity);
-                }}
-              >
-                <motion.div
-                  animate={{ scale: hoveredActivityId === loc.id ? 1.5 : 1 }}
-                  transition={{ type: "spring", stiffness: 300, damping: 20 }}
-                >
-                  <Pin
-                    background={hoveredActivityId === loc.id ? "#C9622B" : "#1E5631"}
-                    borderColor="#fff"
-                    glyphColor="#fff"
-                  />
-                </motion.div>
-              </AdvancedMarker>
-            ))}
-
-            {currentTrip.days.map((day) => (
-              <MapPolyline
-                key={day.id}
-                path={day.activities.map(a => ({ lat: a.location.lat, lng: a.location.lng }))}
-              />
-            ))}
-          </Map>
-        </APIProvider>
-
-        {/* Map attribution */}
-        <div className="absolute bottom-4 left-4 bg-background/80 backdrop-blur text-[10px] text-muted-foreground px-2 py-1 rounded-md border pointer-events-none">
-          Click a pin to view details
-        </div>
+        <TripMap
+          locations={mapLocations}
+          dayPaths={dayPaths}
+          hoveredActivityId={hoveredActivityId}
+          onActivitySelect={setSelectedActivity}
+          center={center}
+        />
       </div>
     </div>
+    </>
   );
 }
